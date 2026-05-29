@@ -1,0 +1,67 @@
+# utils/report_generator.py
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import A4
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from datetime import datetime
+import os
+
+def generate_pdf_report(df_income, df_bs, df_cf, ratios, projected_net_income):
+    """
+    Generate a professional PDF turnaround report
+    """
+    filename = f"Turnaround_Report_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf"
+    filepath = os.path.join("reports", filename)
+    os.makedirs("reports", exist_ok=True)
+
+    doc = SimpleDocTemplate(filepath, pagesize=A4, rightMargin=40, leftMargin=40)
+    styles = getSampleStyleSheet()
+    
+    story = []
+    
+    # Title
+    title_style = ParagraphStyle('Title', parent=styles['Heading1'], fontSize=24, spaceAfter=30, textColor=colors.HexColor('#e91e63'))
+    story.append(Paragraph("Financial Turnaround Report", title_style))
+    story.append(Paragraph(f"Generated on: {datetime.now().strftime('%B %d, %Y')}", styles['Normal']))
+    story.append(Spacer(1, 30))
+
+    # Executive Summary
+    story.append(Paragraph("Executive Summary", styles['Heading2']))
+    health = ratios['Health_Score']
+    summary_text = f"""
+    The company is currently in a critical financial position with a Health Score of {health}/100.<br/>
+    Key issues include declining profitability, negative cash flow, and high leverage.<br/>
+    Projected 2026 Net Income after recommended actions: £{projected_net_income:,.0f}
+    """
+    story.append(Paragraph(summary_text, styles['Normal']))
+    story.append(Spacer(1, 20))
+
+    # Key Ratios Table
+    story.append(Paragraph("Key Financial Ratios", styles['Heading2']))
+    ratio_data = [["Ratio", "Value"]] + [[k.replace("_", " "), v] for k, v in list(ratios.items())[:8]]
+    table = Table(ratio_data, colWidths=[200, 150])
+    table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1a1a2e')),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+        ('GRID', (0, 0), (-1, -1), 1, colors.grey),
+    ]))
+    story.append(table)
+    story.append(Spacer(1, 30))
+
+    # Recommendations
+    story.append(Paragraph("Recommended Turnaround Actions", styles['Heading2']))
+    recs = [
+        "1. Reduce operating expenses by 20-30% within 90 days",
+        "2. Aggressively reduce Days Sales Outstanding (DSO)",
+        "3. Increase prices on core products by 8-12%",
+        "4. Refinance short-term debt",
+        "5. Focus sales on high-margin customers"
+    ]
+    for rec in recs:
+        story.append(Paragraph(f"• {rec}", styles['Normal']))
+    
+    story.append(Spacer(1, 40))
+    story.append(Paragraph("This report is confidential and for internal use only.", styles['Italic']))
+
+    doc.build(story)
+    return filepath
