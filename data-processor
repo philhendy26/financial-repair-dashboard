@@ -1,0 +1,52 @@
+# utils/data_processor.py
+import pandas as pd
+import streamlit as st
+from io import BytesIO
+
+def process_financial_data(uploaded_file):
+    """
+    Process uploaded Excel or CSV file and return cleaned DataFrames
+    """
+    try:
+        if uploaded_file.name.endswith('.csv'):
+            df = pd.read_csv(uploaded_file)
+        else:
+            df = pd.read_excel(uploaded_file, sheet_name=None)
+        
+        # Handle different sheet names or single sheet
+        if isinstance(df, dict):
+            df_income = df.get('Income') or df.get('Income Statement') or list(df.values())[0]
+            df_bs = df.get('Balance') or df.get('Balance Sheet') or list(df.values())[1]
+            df_cf = df.get('Cash Flow') or df.get('CashFlow') or list(df.values())[2]
+        else:
+            # Assume single sheet with sections - simplified for demo
+            df_income = df.copy()
+            df_bs = df.copy()
+            df_cf = df.copy()
+
+        # Standardize column names
+        for d in [df_income, df_bs, df_cf]:
+            d.columns = [col.strip().replace(' ', '_').replace('/', '') for col in d.columns]
+            if 'Year' not in d.columns:
+                d['Year'] = [2023, 2024, 2025]  # fallback
+
+        # Ensure numeric
+        numeric_cols = ['Revenue', 'COGS', 'Gross_Profit', 'Operating_Expenses', 'EBIT', 
+                       'Interest_Expense', 'Net_Income', 'Cash', 'Accounts_Receivable', 
+                       'Inventory', 'Total_Assets', 'Accounts_Payable', 'Short_Term_Debt',
+                       'Long_Term_Debt', 'Equity', 'Operating_Cash_Flow']
+        
+        for df_temp in [df_income, df_bs, df_cf]:
+            for col in numeric_cols:
+                if col in df_temp.columns:
+                    df_temp[col] = pd.to_numeric(df_temp[col], errors='coerce').fillna(0)
+
+        # Add Total Debt for convenience
+        if 'Long_Term_Debt' in df_bs.columns and 'Short_Term_Debt' in df_bs.columns:
+            df_bs['Total_Debt'] = df_bs['Long_Term_Debt'] + df_bs['Short_Term_Debt']
+
+        return df_income, df_bs, df_cf
+
+    except Exception as e:
+        st.error(f"Data processing failed: {str(e)}")
+        raise
