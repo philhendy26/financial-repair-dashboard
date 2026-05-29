@@ -1,0 +1,52 @@
+# utils/ratios.py
+import pandas as pd
+
+def calculate_all_ratios(df_income, df_bs, df_cf):
+    """
+    Calculate comprehensive financial ratios and health score
+    """
+    latest_inc = df_income.iloc[-1]
+    latest_bs = df_bs.iloc[-1]
+    latest_cf = df_cf.iloc[-1]
+
+    ratios = {}
+
+    # Profitability
+    ratios['Gross_Margin'] = (latest_inc['Gross_Profit'] / latest_inc['Revenue'] * 100) if latest_inc['Revenue'] != 0 else 0
+    ratios['Operating_Margin'] = (latest_inc['EBIT'] / latest_inc['Revenue'] * 100) if latest_inc['Revenue'] != 0 else 0
+    ratios['Net_Profit_Margin'] = (latest_inc['Net_Income'] / latest_inc['Revenue'] * 100) if latest_inc['Revenue'] != 0 else 0
+
+    # Liquidity
+    current_liabilities = latest_bs.get('Accounts_Payable', 0) + latest_bs.get('Short_Term_Debt', 0)
+    ratios['Current_Ratio'] = latest_bs['Total_Current_Assets'] / current_liabilities if current_liabilities != 0 else 0
+    ratios['Quick_Ratio'] = (latest_bs['Total_Current_Assets'] - latest_bs.get('Inventory', 0)) / current_liabilities if current_liabilities != 0 else 0
+
+    # Leverage
+    ratios['Debt_to_Equity'] = latest_bs['Total_Debt'] / latest_bs['Equity'] if latest_bs['Equity'] != 0 else 0
+    ratios['Debt_to_Assets'] = latest_bs['Total_Debt'] / latest_bs['Total_Assets'] if latest_bs['Total_Assets'] != 0 else 0
+
+    # Efficiency
+    ratios['DSO'] = (latest_bs.get('Accounts_Receivable', 0) / latest_inc['Revenue']) * 365 if latest_inc['Revenue'] != 0 else 0
+    ratios['Inventory_Days'] = (latest_bs.get('Inventory', 0) / latest_inc['COGS']) * 365 if latest_inc['COGS'] != 0 else 0
+
+    # Cash Flow
+    ratios['Operating_Cash_Flow'] = latest_cf['Operating_Cash_Flow']
+    ratios['Free_Cash_Flow'] = latest_cf['Operating_Cash_Flow'] - abs(latest_cf.get('Investing_Cash_Flow', 0))
+
+    # Health Score (0-100)
+    score = 100
+    if ratios['Net_Profit_Margin'] < 0: score -= 35
+    if ratios['Current_Ratio'] < 1.2: score -= 25
+    if ratios['Debt_to_Equity'] > 2.0: score -= 20
+    if ratios['Operating_Cash_Flow'] < 0: score -= 20
+    ratios['Health_Score'] = max(0, min(100, round(score)))
+
+    # Format for display
+    for k in ['Gross_Margin', 'Operating_Margin', 'Net_Profit_Margin']:
+        ratios[k] = f"{ratios[k]:.1f}%"
+    for k in ['Current_Ratio', 'Quick_Ratio', 'Debt_to_Equity', 'Debt_to_Assets']:
+        ratios[k] = f"{ratios[k]:.2f}"
+    for k in ['DSO', 'Inventory_Days']:
+        ratios[k] = f"{ratios[k]:.0f} days"
+
+    return ratios
