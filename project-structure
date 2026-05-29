@@ -1,0 +1,9 @@
+financial_repair_dashboard/
+├── main.py
+├── utils/
+│   ├── data_processor.py
+│   ├── ratios.py
+│   └── report_generator.py
+├── assets/
+│   └── logo.png (optional)
+└── requirements.txt
